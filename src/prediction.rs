@@ -27,7 +27,7 @@ fn extract_ion_id_from_bp_address(bp_address: &str) -> String {
 }
 
 impl PredictionConfig {
-    pub fn try_init(cp_path: String) -> io::Result<Self> {
+    pub fn try_init(cp_path: String, algo : &str) -> io::Result<Self> {
         let (nodes, contacts) = IONContactPlan::parse::<NoManagement, EVLManager>(&cp_path)?;
 
         let node_index_map: HashMap<String, NodeID> = nodes
@@ -37,7 +37,7 @@ impl PredictionConfig {
             .collect();
 
         let router = build_generic_router::<NoManagement, EVLManager>(
-            "CgrFirstEndingContactParenting",
+            algo,
             nodes,
             contacts,
             None,
