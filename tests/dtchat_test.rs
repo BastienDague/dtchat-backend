@@ -103,3 +103,101 @@ fn test_notify_order() {
 
     //instead of last_info, we could also match the event directly, but is longer to write
 }
+
+#[test]
+fn update_with_invalid_path() {
+    setup();
+    let mut model = ChatModel::new();
+
+    let obs = Arc::new(Mutex::new(Obs::default()));
+    model.add_observer(obs.clone());
+
+    model.update("this_file_does_not_exist.ion".to_string(), "dijkstra");
+
+    let obs = obs.lock().unwrap();
+
+    assert!(!obs.events.is_empty());
+
+    match obs.events.last().unwrap() {
+        ChatAppEvent::Info(msg) => assert!(msg.contains("Update failed")),
+        _ => panic!("Expected Info event"),
+    }
+}
+
+#[test]
+fn pbat_is_disabled() {
+    setup();
+    let mut model = ChatModel::new();
+
+    model.update("invalid_path.ion".to_string(), "dijkstra");
+
+    assert_eq!(model.is_pbat_enabled(), false);
+}
+
+#[test]
+fn get_localpeer_returns_configured_peer() {
+    // get_localpeer => config coherency (uuid expected "1", name expected "Instance 1")
+    setup();
+    let model = ChatModel::new();
+
+    let me = model.get_localpeer();
+    assert_eq!(me.uuid, "1");
+    assert_eq!(me.name, "Instance 1");
+}
+
+#[test]
+fn get_rooms_contains_default_room() {
+    // get_rooms => contains the default room from YAML (id 1, name "Default")
+    setup();
+    let model = ChatModel::new();
+
+    let rooms = model.get_rooms();
+    assert!(rooms.contains_key("1"));
+    assert_eq!(rooms.get("1").unwrap().name, "Default");
+}
+
+#[test]
+fn get_other_peers_for_room_returns_all_except_local() {
+    // get_other_peers_for_room => returns all peers in room except local peer (2 and 3 in room 1)
+    setup();
+    let model = ChatModel::new();
+
+    let others = model.get_other_peers_for_room(&"1".to_string()).expect("room 1 should exist");
+    assert_eq!(others.len(), 2);
+
+    // others: Vec<(peer_uuid, Endpoint)>
+    let mut ids: Vec<String> = others.into_iter().map(|(id, _ep)| id).collect();
+    ids.sort();
+    assert_eq!(ids, vec!["2".to_string(), "3".to_string()]);
+}
+
+#[test]
+fn get_other_peers_for_room_unknown_room_is_none() {
+    // unknown room => None
+    setup();
+    let model = ChatModel::new();
+
+    let res = model.get_other_peers_for_room(&"999".to_string());
+    assert!(res.is_none());
+}
+
+#[test]
+fn get_other_peers_contains_known_peers() {
+    // get_other_peers => contains distant peers from YAML (2 and 3)
+    setup();
+    let model = ChatModel::new();
+
+    let peers = model.get_other_peers();
+    assert!(peers.contains_key("2"));
+    assert!(peers.contains_key("3"));
+}
+
+#[test]
+fn get_last_messages_returns_at_most_count() {
+    // get_last_messages => always inferior to count
+    setup();
+    let mut model = ChatModel::new();
+
+    let msgs = model.get_last_messages(10);
+    assert!(msgs.len() <= 10);
+}
