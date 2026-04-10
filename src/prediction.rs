@@ -15,8 +15,8 @@ pub struct PredictionConfig {
     ion_to_node_id: HashMap<String, NodeID>,
     router: Box<dyn Router<NoManagement, EVLManager> + 'static + Sync + Send>,
     cp_start_time: f64,
-    pub nodes_length : usize,
-    pub contacts_length : usize,
+    pub nodes_length: usize,
+    pub contacts_length: usize,
 }
 
 fn extract_ion_id_from_bp_address(bp_address: &str) -> String {
@@ -29,23 +29,21 @@ fn extract_ion_id_from_bp_address(bp_address: &str) -> String {
 }
 
 impl PredictionConfig {
-    pub fn try_init(cp_path: String, algo : &str) -> io::Result<Self> {
+    pub fn try_init(cp_path: String, algo: &str) -> io::Result<Self> {
         let cp = IONContactPlan::parse::<NoManagement, EVLManager>(&cp_path)?;
 
         let nodes_length = cp.nodes.len();
         let contacts_length = cp.contacts.len();
 
-        let node_index_map: HashMap<String, NodeID> = cp.nodes
+        let node_index_map: HashMap<String, NodeID> = cp
+            .nodes
             .iter()
             .enumerate()
             .map(|(index, node)| (node.get_node_name().to_string(), index as NodeID))
             .collect();
 
-        let router_box = build_generic_router::<NoManagement, EVLManager>(
-            algo,
-            cp,
-            None,
-        ).expect("Failed to build router");
+        let router_box = build_generic_router::<NoManagement, EVLManager>(algo, cp, None)
+            .expect("Failed to build router");
 
         let router: Box<dyn Router<NoManagement, EVLManager> + Send + Sync> =
             unsafe { std::mem::transmute(router_box) };
@@ -142,12 +140,10 @@ impl PredictionConfig {
                     format!("No route found from ION {source_ion} to ION {dest_ion}"),
                 ))
             }
-            Err(e) => {
-                Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("A-SABR routing error: {:?}", e),
-                ))
-            }
+            Err(e) => Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("A-SABR routing error: {:?}", e),
+            )),
         }
     }
 }
