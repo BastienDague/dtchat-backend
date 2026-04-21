@@ -7,6 +7,7 @@ use a_sabr::{
     node_manager::none::NoManagement,
     routing::{aliases::build_generic_router, Router},
     types::{Date, NodeID},
+    vertex::Vertex,
 };
 
 use crate::time::DTChatTime;
@@ -32,14 +33,19 @@ impl PredictionConfig {
     pub fn try_init(cp_path: String, algo: &str) -> io::Result<Self> {
         let cp = IONContactPlan::parse::<NoManagement, EVLManager>(&cp_path)?;
 
-        let nodes_length = cp.nodes.len();
+        let nodes_length = cp.vertices.len();
         let contacts_length = cp.contacts.len();
 
         let node_index_map: HashMap<String, NodeID> = cp
-            .nodes
+            .vertices
             .iter()
             .enumerate()
-            .map(|(index, node)| (node.get_node_name().to_string(), index as NodeID))
+            .filter_map(|(i, v)| match v {
+                Vertex::INode(n) | Vertex::ENode(n) => {
+                    Some((n.get_node_name().to_string(), i as NodeID))
+                }
+                _ => None,
+            })
             .collect();
 
         let router_box = build_generic_router::<NoManagement, EVLManager>(algo, cp, None)
@@ -140,10 +146,7 @@ impl PredictionConfig {
                     format!("No route found from ION {source_ion} to ION {dest_ion}"),
                 ))
             }
-            Err(e) => Err(io::Error::new(
-                io::ErrorKind::Other,
-                format!("A-SABR routing error: {:?}", e),
-            )),
+            Err(e) => Err(io::Error::other(format!("A-SABR routing error: {:?}", e))),
         }
     }
 }
