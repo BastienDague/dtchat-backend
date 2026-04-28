@@ -40,11 +40,10 @@ impl PredictionConfig {
             .vertices
             .iter()
             .enumerate()
-            .filter_map(|(i, v)| match v {
-                Vertex::INode(n) | Vertex::ENode(n) => {
-                    Some((n.get_node_name().to_string(), i as NodeID))
-                }
-                _ => None,
+            .map(|(_, node)| match node {
+                a_sabr::vertex::Vertex::INode(node) => (node.get_node_name(), node.get_node_id()),
+                a_sabr::vertex::Vertex::ENode(node) => (node.get_node_name(), node.get_node_id()),
+                a_sabr::vertex::Vertex::VNode((name, id)) => (name.clone(), *id),
             })
             .collect();
 
@@ -146,7 +145,10 @@ impl PredictionConfig {
                     format!("No route found from ION {source_ion} to ION {dest_ion}"),
                 ))
             }
-            Err(e) => Err(io::Error::other(format!("A-SABR routing error: {:?}", e))),
+            Err(e) => Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("A-SABR routing error: {:?}", e),
+            )),
         }
     }
 }
